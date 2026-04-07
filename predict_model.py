@@ -66,9 +66,36 @@ def predict_crop_yield(year, rainfall, pesticides, avg_temp, area, item):
         # Make prediction
         prediction = float(model.predict(input_encoded)[0])
         
-        # Calculate confidence based on model's prediction variance
-        # Use the range of training target values for normalization
-        confidence = 0.85  # Default confidence for RF models
+        # Calculate confidence based on the model's actual R² score
+        # From your Colab training: Random Forest R² = 0.7411 (74.11%)
+        # This represents the model's explained variance
+        base_confidence = 0.7411
+        
+        # Adjust confidence based on input feature reasonableness
+        # Check if inputs are within typical ranges from training data
+        confidence_adjustments = []
+        
+        # Rainfall adjustment: typical range 327-3000 mm
+        if 200 < rainfall < 3500:
+            confidence_adjustments.append(0.02)  # Boost within common range
+        elif rainfall < 200 or rainfall > 3500:
+            confidence_adjustments.append(-0.05)  # Penalize unusual values
+            
+        # Pesticide adjustment: typical range 10000-30000 tonnes
+        if 5000 < pesticides < 40000:
+            confidence_adjustments.append(0.02)
+        elif pesticides < 5000 or pesticides > 40000:
+            confidence_adjustments.append(-0.05)
+            
+        # Temperature adjustment: typical range 18-28°C
+        if 15 < avg_temp < 32:
+            confidence_adjustments.append(0.02)
+        else:
+            confidence_adjustments.append(-0.05)
+        
+        # Calculate final confidence (bounded between 0 and 1)
+        confidence = base_confidence + sum(confidence_adjustments)
+        confidence = max(0.5, min(1.0, confidence))  # Keep between 50% and 100%
         
         # Create reasoning based on input features
         rainfall_status = "adequate" if rainfall > 800 else "low" if rainfall < 500 else "moderate"
