@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { Dashboard } from './components/Dashboard';
 import { Predictor } from './components/Predictor';
-import { LayoutDashboard, TrendingUp, Github, FileText, ExternalLink } from 'lucide-react';
+import { TrainedModel } from './components/TrainedModel';
+import { LayoutDashboard, TrendingUp, Github, FileText, ExternalLink, Cpu } from 'lucide-react';
 import { cn } from './lib/utils';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'predictor'>('predictor');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'predictor' | 'trained-model'>('predictor');
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] text-[#1A1A1A] selection:bg-emerald-100 selection:text-emerald-900">
@@ -32,6 +33,16 @@ export default function App() {
             >
               <TrendingUp className="w-4 h-4" />
               Predictor
+            </button>
+            <button 
+              onClick={() => setActiveTab('trained-model')}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all",
+                activeTab === 'trained-model' ? "bg-white text-emerald-700 shadow-sm" : "text-zinc-500 hover:text-zinc-700"
+              )}
+            >
+              <Cpu className="w-4 h-4" />
+              ML Model
             </button>
             <button 
               onClick={() => setActiveTab('dashboard')}
@@ -63,18 +74,24 @@ export default function App() {
         {/* Hero Section */}
         <div className="mb-12">
           <h2 className="text-5xl font-black tracking-tighter mb-4 max-w-2xl leading-[0.9]">
-            {activeTab === 'predictor' ? 'Predict the future of your harvest.' : 'Visualizing the data behind the yield.'}
+            {activeTab === 'predictor' 
+              ? 'Predict the future of your harvest.' 
+              : activeTab === 'trained-model'
+              ? 'Our ML Model Performance'
+              : 'Visualizing the data behind the yield.'}
           </h2>
           <p className="text-zinc-500 max-w-xl font-medium leading-relaxed">
             {activeTab === 'predictor' 
               ? 'Enter your agricultural parameters below to generate a high-precision yield prediction based on historical data patterns.'
+              : activeTab === 'trained-model'
+              ? 'See how our Random Forest model predicts crop yield with 74% accuracy. Explore feature importance, model metrics, and detailed predictions.'
               : 'Explore the relationships between rainfall, pesticide use, and temperature that drive global crop production.'}
           </p>
         </div>
 
         {/* Content */}
         <div className="relative">
-          {activeTab === 'predictor' ? <Predictor /> : <Dashboard />}
+          {activeTab === 'predictor' ? <Predictor /> : activeTab === 'trained-model' ? <TrainedModel /> : <Dashboard />}
         </div>
       </main>
 
