@@ -1,0 +1,5 @@
+{
+  "name": "Crop Yield Predictor",
+  "description": "A dashboard for visualizing crop yield data and predicting production using AI trained on historical agricultural datasets.",
+  "requestFramePermissions": []
+}

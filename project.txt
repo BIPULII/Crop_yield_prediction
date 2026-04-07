@@ -1,0 +1,876 @@
+from google.colab import drive
+drive.mount('/content/drive') ----Mounted at /content/drive
+
+# Import the necessary libraries
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import os
+import seaborn as sns
+
+import pandas as pd
+
+# Load CSVs
+yield_df = pd.read_csv('/content/drive/MyDrive/ML workshops/ML_Project_csv/yield.csv')
+rainfall = pd.read_csv('/content/drive/MyDrive/ML workshops/ML_Project_csv/rainfall.csv')
+pesticides = pd.read_csv('/content/drive/MyDrive/ML workshops/ML_Project_csv/pesticides.csv')
+temperature = pd.read_csv('/content/drive/MyDrive/ML workshops/ML_Project_csv/temp.csv')
+
+# Strip all column names
+yield_df.columns = yield_df.columns.str.strip()
+rainfall.columns = rainfall.columns.str.strip()
+pesticides.columns = pesticides.columns.str.strip()
+temperature.columns = temperature.columns.str.strip()
+
+# Prepare yield_df
+yield_df = yield_df[['Area', 'Item', 'Year', 'Value']].rename(columns={'Value': 'Production'})
+
+# Prepare rainfall
+rainfall = rainfall[['Area', 'Year', 'average_rain_fall_mm_per_year']].rename(
+    columns={'average_rain_fall_mm_per_year': 'Annual Rainfall'}
+)
+
+# Prepare pesticides (sum over Items if multiple per Area+Year)
+pesticides = pesticides.groupby(['Area', 'Year'])['Value'].sum().reset_index()
+pesticides = pesticides.rename(columns={'Value': 'Pesticide Use'})
+
+# Prepare temperature
+temperature = temperature.rename(columns={'year': 'Year', 'avg_temp': 'Avg Temperature'})
+temperature = temperature[['Year', 'Avg Temperature']]  # country-level
+
+# Merge step by step
+data = yield_df.merge(rainfall, on=['Area', 'Year'], how='left')
+data = data.merge(pesticides, on=['Area', 'Year'], how='left')
+data = data.merge(temperature, on='Year', how='left')
+
+# Convert numerical columns
+numerical_cols = ['Annual Rainfall', 'Pesticide Use', 'Avg Temperature', 'Production']
+for col in numerical_cols:
+    data[col] = pd.to_numeric(data[col], errors='coerce')  # convert invalid values to NaN
+
+# Fill NaNs with mean
+for col in numerical_cols:
+    data[col] = data[col].fillna(data[col].mean())
+
+# Filter for Year >= 1985 and reset index
+cleaned_data = data[data['Year'] >= 1985].reset_index(drop=True)
+
+# Select final columns
+cleaned_data = cleaned_data[['Year', 'Annual Rainfall', 'Pesticide Use', 'Avg Temperature',
+                             'Area', 'Item', 'Production']]
+
+# Check result
+print(cleaned_data.head())
+-----   Year  Annual Rainfall  Pesticide Use  Avg Temperature         Area   Item  \
+0  1985            327.0   25869.548802            26.30  Afghanistan  Maize   
+1  1985            327.0   25869.548802            26.63  Afghanistan  Maize   
+2  1985            327.0   25869.548802            26.32  Afghanistan  Maize   
+3  1985            327.0   25869.548802            26.46  Afghanistan  Maize   
+4  1985            327.0   25869.548802            19.13  Afghanistan  Maize   
+
+   Production  
+0       16652  
+1       16652  
+2       16652  
+3       16652  
+4       16652  
+-----
+# Print the shape of the dataframe
+#(num of rows, num or columns)
+
+cleaned_data.shape----(10665552, 7)
+
+# Print a concise summery of the pandas dataframe
+
+cleaned_data.info()---<class 'pandas.core.frame.DataFrame'>
+RangeIndex: 10665552 entries, 0 to 10665551
+Data columns (total 7 columns):
+ #   Column           Dtype  
+---  ------           -----  
+ 0   Year             int64  
+ 1   Annual Rainfall  float64
+ 2   Pesticide Use    float64
+ 3   Avg Temperature  float64
+ 4   Area             object 
+ 5   Item             object 
+ 6   Production       int64  
+dtypes: float64(3), int64(2), object(2)
+memory usage: 569.6+ MB
+-----
+# Separate independent and dependent variables
+X = cleaned_data.drop('Production', axis=1)  # features
+y = cleaned_data['Production']               # target
+
+# Display the first 5 data points
+X.head()----
+ 
+  
+    
+
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+
+
+  
+    
+      
+      Year
+      Annual Rainfall
+      Pesticide Use
+      Avg Temperature
+      Area
+      Item
+    
+  
+  
+    
+      0
+      1985
+      327.0
+      25869.548802
+      26.30
+      Afghanistan
+      Maize
+    
+    
+      1
+      1985
+      327.0
+      25869.548802
+      26.63
+      Afghanistan
+      Maize
+    
+    
+      2
+      1985
+      327.0
+      25869.548802
+      26.32
+      Afghanistan
+      Maize
+    
+    
+      3
+      1985
+      327.0
+      25869.548802
+      26.46
+      Afghanistan
+      Maize
+    
+    
+      4
+      1985
+      327.0
+      25869.548802
+      19.13
+      Afghanistan
+      Maize
+    
+  
+
+
+    
+
+  
+    
+
+  
+    
+  
+    
+
+  
+    .colab-df-container {
+      display:flex;
+      gap: 12px;
+    }
+
+    .colab-df-convert {
+      background-color: #E8F0FE;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      display: none;
+      fill: #1967D2;
+      height: 32px;
+      padding: 0 0 0 0;
+      width: 32px;
+    }
+
+    .colab-df-convert:hover {
+      background-color: #E2EBFA;
+      box-shadow: 0px 1px 2px rgba(60, 64, 67, 0.3), 0px 1px 3px 1px rgba(60, 64, 67, 0.15);
+      fill: #174EA6;
+    }
+
+    .colab-df-buttons div {
+      margin-bottom: 4px;
+    }
+
+    [theme=dark] .colab-df-convert {
+      background-color: #3B4455;
+      fill: #D2E3FC;
+    }
+
+    [theme=dark] .colab-df-convert:hover {
+      background-color: #434B5C;
+      box-shadow: 0px 1px 3px 1px rgba(0, 0, 0, 0.15);
+      filter: drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.3));
+      fill: #FFFFFF;
+    }
+  
+
+    
+      const buttonEl =
+        document.querySelector('#df-53abae5d-a8e8-4f4c-bad5-c7fbe10a5bb2 button.colab-df-convert');
+      buttonEl.style.display =
+        google.colab.kernel.accessAllowed ? 'block' : 'none';
+
+      async function convertToInteractive(key) {
+        const element = document.querySelector('#df-53abae5d-a8e8-4f4c-bad5-c7fbe10a5bb2');
+        const dataTable =
+          await google.colab.kernel.invokeFunction('convertToInteractive',
+                                                    [key], {});
+        if (!dataTable) return;
+
+        const docLinkHtml = 'Like what you see? Visit the ' +
+          '<a target="_blank" href=https://colab.research.google.com/notebooks/data_table.ipynb>data table notebook</a>'
+          + ' to learn more about interactive tables.';
+        element.innerHTML = '';
+        dataTable['output_type'] = 'display_data';
+        await google.colab.output.renderOutput(dataTable, element);
+        const docLink = document.createElement('div');
+        docLink.innerHTML = docLinkHtml;
+        element.appendChild(docLink);
+      }
+    
+  
+
+
+    
+  
+  # Display the first 5 corresponding targets
+y.head()--- 
+
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+
+
+  
+    
+      
+      Production
+    
+  
+  
+    
+      0
+      16652
+    
+    
+      1
+      16652
+    
+    
+      2
+      16652
+    
+    
+      3
+      16652
+    
+    
+      4
+      16652
+    
+  
+
+dtype: int64
+
+from sklearn.model_selection import train_test_split
+x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
+# Length of the training + validation sets
+len(x_train)---7999164
+# 1st run
+x_train.head()----- 
+  
+    
+
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+
+
+  
+    
+      
+      Year
+      Annual Rainfall
+      Pesticide Use
+      Avg Temperature
+      Area
+      Item
+    
+  
+  
+    
+      8747631
+      2006
+      282.0
+      25869.548802
+      21.68
+      Somalia
+      Wheat
+    
+    
+      9807067
+      1989
+      1180.0
+      25869.548802
+      17.44
+      Uganda
+      Potatoes
+    
+    
+      7652184
+      2009
+      2348.0
+      25869.548802
+      4.32
+      Philippines
+      Yams
+    
+    
+      5481804
+      2004
+      661.0
+      1816.000000
+      5.40
+      Lebanon
+      Potatoes
+    
+    
+      1125367
+      2001
+      1761.0
+      151523.000000
+      12.85
+      Brazil
+      Potatoes
+    
+  
+
+
+    
+
+  
+    
+
+  
+    
+  
+    
+
+  
+    .colab-df-container {
+      display:flex;
+      gap: 12px;
+    }
+
+    .colab-df-convert {
+      background-color: #E8F0FE;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      display: none;
+      fill: #1967D2;
+      height: 32px;
+      padding: 0 0 0 0;
+      width: 32px;
+    }
+
+    .colab-df-convert:hover {
+      background-color: #E2EBFA;
+      box-shadow: 0px 1px 2px rgba(60, 64, 67, 0.3), 0px 1px 3px 1px rgba(60, 64, 67, 0.15);
+      fill: #174EA6;
+    }
+
+    .colab-df-buttons div {
+      margin-bottom: 4px;
+    }
+
+    [theme=dark] .colab-df-convert {
+      background-color: #3B4455;
+      fill: #D2E3FC;
+    }
+
+    [theme=dark] .colab-df-convert:hover {
+      background-color: #434B5C;
+      box-shadow: 0px 1px 3px 1px rgba(0, 0, 0, 0.15);
+      filter: drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.3));
+      fill: #FFFFFF;
+    }
+  
+
+    
+      const buttonEl =
+        document.querySelector('#df-fae49d80-9a74-4e24-b571-4000d7ba117d button.colab-df-convert');
+      buttonEl.style.display =
+        google.colab.kernel.accessAllowed ? 'block' : 'none';
+
+      async function convertToInteractive(key) {
+        const element = document.querySelector('#df-fae49d80-9a74-4e24-b571-4000d7ba117d');
+        const dataTable =
+          await google.colab.kernel.invokeFunction('convertToInteractive',
+                                                    [key], {});
+        if (!dataTable) return;
+
+        const docLinkHtml = 'Like what you see? Visit the ' +
+          '<a target="_blank" href=https://colab.research.google.com/notebooks/data_table.ipynb>data table notebook</a>'
+          + ' to learn more about interactive tables.';
+        element.innerHTML = '';
+        dataTable['output_type'] = 'display_data';
+        await google.colab.output.renderOutput(dataTable, element);
+        const docLink = document.createElement('div');
+        docLink.innerHTML = docLinkHtml;
+        element.appendChild(docLink);
+      }
+    
+  
+
+
+    
+  
+len(x_test)--2666388
+
+
+x_train.describe()----- 
+  
+    
+
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+
+
+  
+    
+      
+      Year
+      Annual Rainfall
+      Pesticide Use
+      Avg Temperature
+    
+  
+  
+    
+      count
+      7.999164e+06
+      7.999164e+06
+      7.999164e+06
+      7.999164e+06
+    
+    
+      mean
+      1.999350e+03
+      1.256640e+03
+      2.586790e+04
+      1.790380e+01
+    
+    
+      std
+      8.290260e+00
+      6.905708e+02
+      1.125478e+05
+      7.346318e+00
+    
+    
+      min
+      1.985000e+03
+      5.100000e+01
+      0.000000e+00
+      -3.590000e+00
+    
+    
+      25%
+      1.992000e+03
+      7.480000e+02
+      5.079400e+02
+      1.178000e+01
+    
+    
+      50%
+      1.999000e+03
+      1.256461e+03
+      8.167300e+03
+      1.806000e+01
+    
+    
+      75%
+      2.007000e+03
+      1.577000e+03
+      2.586955e+04
+      2.530000e+01
+    
+    
+      max
+      2.016000e+03
+      3.240000e+03
+      1.807000e+06
+      3.073000e+01
+    
+  
+
+
+    
+
+  
+    
+
+  
+    
+  
+    
+
+  
+    .colab-df-container {
+      display:flex;
+      gap: 12px;
+    }
+
+    .colab-df-convert {
+      background-color: #E8F0FE;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      display: none;
+      fill: #1967D2;
+      height: 32px;
+      padding: 0 0 0 0;
+      width: 32px;
+    }
+
+    .colab-df-convert:hover {
+      background-color: #E2EBFA;
+      box-shadow: 0px 1px 2px rgba(60, 64, 67, 0.3), 0px 1px 3px 1px rgba(60, 64, 67, 0.15);
+      fill: #174EA6;
+    }
+
+    .colab-df-buttons div {
+      margin-bottom: 4px;
+    }
+
+    [theme=dark] .colab-df-convert {
+      background-color: #3B4455;
+      fill: #D2E3FC;
+    }
+
+    [theme=dark] .colab-df-convert:hover {
+      background-color: #434B5C;
+      box-shadow: 0px 1px 3px 1px rgba(0, 0, 0, 0.15);
+      filter: drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.3));
+      fill: #FFFFFF;
+    }
+  
+
+    
+      const buttonEl =
+        document.querySelector('#df-6560d830-513c-4829-aa0b-c8e048ee59f1 button.colab-df-convert');
+      buttonEl.style.display =
+        google.colab.kernel.accessAllowed ? 'block' : 'none';
+
+      async function convertToInteractive(key) {
+        const element = document.querySelector('#df-6560d830-513c-4829-aa0b-c8e048ee59f1');
+        const dataTable =
+          await google.colab.kernel.invokeFunction('convertToInteractive',
+                                                    [key], {});
+        if (!dataTable) return;
+
+        const docLinkHtml = 'Like what you see? Visit the ' +
+          '<a target="_blank" href=https://colab.research.google.com/notebooks/data_table.ipynb>data table notebook</a>'
+          + ' to learn more about interactive tables.';
+        element.innerHTML = '';
+        dataTable['output_type'] = 'display_data';
+        await google.colab.output.renderOutput(dataTable, element);
+        const docLink = document.createElement('div');
+        docLink.innerHTML = docLinkHtml;
+        element.appendChild(docLink);
+      }
+    
+  
+
+
+    
+  
+# Check the distribution of crop production in the training set
+sns.displot(y_train, kde=True, bins=20).set(title='Crop Production Distribution')
+plt.xlabel('Production')
+plt.ylabel('Frequency')
+plt.show() -------- 
+# Check distribution of crops in training set
+plt.figure(figsize=(10,6))  # increase figure size
+sns.countplot(x=cleaned_data['Item'])
+plt.title('Crop Type Distribution')
+plt.xlabel('Crop Type')
+plt.ylabel('Count')
+plt.xticks(rotation=45, ha='right')  # rotate labels and align
+plt.tight_layout()  # adjust layout so labels fit
+plt.show()
+# Check Crop Distribution Across Areas
+plt.figure(figsize=(10,6))
+sns.catplot(x='Item', hue='Area', data=cleaned_data, kind='count')
+plt.title('Crop Distribution Across Areas')
+plt.xlabel('Crop Type')
+plt.ylabel('Count')
+plt.xticks(rotation=45)
+plt.show()
+# Recombine the training features and target column
+# We previously separated X (features) and y (Production),
+# so now we combine them again to analyze production distribution for crops and regions
+
+cleaned_data_temp_train = pd.concat([x_train, y_train], axis=1)
+
+# Display the first few rows to verify the merge
+cleaned_data_temp_train.head()
+----- 
+  
+    
+
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+
+
+  
+    
+      
+      Year
+      Annual Rainfall
+      Pesticide Use
+      Avg Temperature
+      Area
+      Item
+      Production
+    
+  
+  
+    
+      8747631
+      2006
+      282.0
+      25869.548802
+      21.68
+      Somalia
+      Wheat
+      3692
+    
+    
+      9807067
+      1989
+      1180.0
+      25869.548802
+      17.44
+      Uganda
+      Potatoes
+      69276
+    
+    
+      7652184
+      2009
+      2348.0
+      25869.548802
+      4.32
+      Philippines
+      Yams
+      45784
+    
+    
+      5481804
+      2004
+      661.0
+      1816.000000
+      5.40
+      Lebanon
+      Potatoes
+      255504
+    
+    
+      1125367
+      2001
+      1761.0
+      151523.000000
+      12.85
+      Brazil
+      Potatoes
+      184997
+    
+  
+
+
+    
+
+  
+    
+
+  
+    
+  
+    
+
+  
+    .colab-df-container {
+      display:flex;
+      gap: 12px;
+    }
+
+    .colab-df-convert {
+      background-color: #E8F0FE;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      display: none;
+      fill: #1967D2;
+      height: 32px;
+      padding: 0 0 0 0;
+      width: 32px;
+    }
+
+    .colab-df-convert:hover {
+      background-color: #E2EBFA;
+      box-shadow: 0px 1px 2px rgba(60, 64, 67, 0.3), 0px 1px 3px 1px rgba(60, 64, 67, 0.15);
+      fill: #174EA6;
+    }
+
+    .colab-df-buttons div {
+      margin-bottom: 4px;
+    }
+
+    [theme=dark] .colab-df-convert {
+      background-color: #3B4455;
+      fill: #D2E3FC;
+    }
+
+    [theme=dark] .colab-df-convert:hover {
+      background-color: #434B5C;
+      box-shadow: 0px 1px 3px 1px rgba(0, 0, 0, 0.15);
+      filter: drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.3));
+      fill: #FFFFFF;
+    }
+  
+
+    
+      const buttonEl =
+        document.querySelector('#df-2caeb9fa-2528-473a-b0e9-eb827ab534a8 button.colab-df-convert');
+      buttonEl.style.display =
+        google.colab.kernel.accessAllowed ? 'block' : 'none';
+
+      async function convertToInteractive(key) {
+        const element = document.querySelector('#df-2caeb9fa-2528-473a-b0e9-eb827ab534a8');
+        const dataTable =
+          await google.colab.kernel.invokeFunction('convertToInteractive',
+                                                    [key], {});
+        if (!dataTable) return;
+
+        const docLinkHtml = 'Like what you see? Visit the ' +
+          '<a target="_blank" href=https://colab.research.google.com/notebooks/data_table.ipynb>data table notebook</a>'
+          + ' to learn more about interactive tables.';
+        element.innerHTML = '';
+        dataTable['output_type'] = 'display_data';
+        await google.colab.output.renderOutput(dataTable, element);
+        const docLink = document.createElement('div');
+        docLink.innerHTML = docLinkHtml;
+        element.appendChild(docLink);
+      }
+    
+  
+
+
+    
+  
+# Compare production distribution for two crops (example: Yams and Maize)
+
+fig = plt.figure(figsize=(17,5))
+
+# Left plot — Production distribution for Yams
+ax = fig.add_subplot(121)
+sns.histplot(cleaned_data_temp_train[cleaned_data_temp_train['Item'] == 'Yams']["Production"],
+             color='g', ax=ax, kde=True)
+ax.set_title('Distribution of Production for Yams')
+ax.set_xlabel('Production (hg/ha)')
+ax.set_ylabel('Frequency')
+
+# Right plot — Production distribution for Maize
+ax = fig.add_subplot(122)
+sns.histplot(cleaned_data_temp_train[cleaned_data_temp_train['Item'] == 'Maize']["Production"],
+             color='b', ax=ax, kde=True)
+ax.set_title('Distribution of Production for Maize')
+ax.set_xlabel('Production (hg/ha)')
+ax.set_ylabel('Frequency')
+
+plt.tight_layout()
+plt.show()
+print(cleaned_data_temp_train.columns)
+----Index(['Year', 'Annual Rainfall', 'Pesticide Use', 'Avg Temperature', 'Area',
+       'Item', 'Production'],
+      dtype='object')
+plt.figure(figsize=(10,6))
+sns.scatterplot(x='Annual Rainfall', y='Production',
+                data=cleaned_data_temp_train, alpha=0.7)
+plt.title('Annual Rainfall vs Production')
+plt.show()
+# Randomly select a smaller subset (for example, 5% of the data)
+sampled_data = cleaned_data.sample(frac=0.05, random_state=42)  # you can adjust 0.05 → 0.1 or 0.02
+
+# Create scatter plot using the smaller dataset
+plt.figure(figsize=(10,6))
+sns.scatterplot(x='Item', y='Production',
+                data=cleaned_data, hue='Item', palette='magma', alpha=0.7)
+plt.title('Pesticide Use vs Production by Crop (Sampled Data)')
+plt.xlabel('Pesticide Use (tonnes)')
+plt.ylabel('Production (hg/ha)')
+plt.show()
