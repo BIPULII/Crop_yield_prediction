@@ -33,6 +33,11 @@ app.post('/api/predict-model', (req, res) => {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
+  // Log the inputs for debugging
+  console.log('Prediction Request:', {
+    year, rainfall, pesticides, avgTemp, area, item
+  });
+
   // Spawn Python process to run the model
   const pythonProcess = spawn('python', [
     path.join(__dirname, 'predict_model.py'),
@@ -56,6 +61,9 @@ app.post('/api/predict-model', (req, res) => {
   });
 
   pythonProcess.on('close', (code) => {
+    console.log('Python process output:', output);
+    console.log('Python process error:', errorOutput);
+    
     if (code !== 0) {
       console.error('Python script error:', errorOutput);
       return res.status(500).json({ 
@@ -66,6 +74,7 @@ app.post('/api/predict-model', (req, res) => {
 
     try {
       const result = JSON.parse(output);
+      console.log('Parsed result:', result);
       res.json(result);
     } catch (e) {
       console.error('JSON parse error:', e);

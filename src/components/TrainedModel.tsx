@@ -183,7 +183,7 @@ export const TrainedModel: React.FC = () => {
               <XAxis type="number" />
               <YAxis dataKey="feature" type="category" width={120} />
               <Tooltip 
-                formatter={(value) => `${(value * 100).toFixed(1)}%`}
+                formatter={(value) => `${((value as number) * 100).toFixed(1)}%`}
                 contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
               />
               <Bar dataKey="importance" fill="#8b5cf6" radius={[0, 8, 8, 0]} />

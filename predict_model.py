@@ -4,6 +4,31 @@ import json
 import sys
 import os
 
+# Mapping from app input names to actual training data names
+AREA_MAPPING = {
+    'Afghanistan': 'Afghanistan',
+    'Brazil': 'Brazil',
+    'Somalia': 'Somalia',
+    'Uganda': 'Uganda',
+    'Philippines': 'Philippines',
+    'Lebanon': 'Lebanon',
+    'India': 'India',
+    'USA': 'United States of America',
+    'China': 'China, mainland',
+    'France': 'France'
+}
+
+ITEM_MAPPING = {
+    'Maize': 'Maize',
+    'Potatoes': 'Potatoes',
+    'Wheat': 'Wheat',
+    'Rice': 'Rice, paddy',
+    'Yams': 'Yams',
+    'Cassava': 'Cassava',
+    'Soybeans': 'Soybeans',
+    'Sorghum': 'Sorghum'
+}
+
 def predict_crop_yield(year, rainfall, pesticides, avg_temp, area, item):
     """
     Load the trained Random Forest model and make predictions.
@@ -20,6 +45,10 @@ def predict_crop_yield(year, rainfall, pesticides, avg_temp, area, item):
         dict - Prediction result with prediction, confidence, and reasoning
     """
     try:
+        # Map input names to actual training data names
+        actual_area = AREA_MAPPING.get(area, area)
+        actual_item = ITEM_MAPPING.get(item, item)
+        
         # Get the directory where this script is located
         script_dir = os.path.dirname(os.path.abspath(__file__))
         model_path = os.path.join(script_dir, 'model.pkl')
@@ -33,17 +62,15 @@ def predict_crop_yield(year, rainfall, pesticides, avg_temp, area, item):
         
         model = joblib.load(model_path)
         
-        # Create feature dataframe matching the training format
-        # The model expects: Year, Annual Rainfall, Pesticide Use, Avg Temperature, Area_encoded, Item_encoded
-        
         # Create input dataframe with same structure as training data
+        # Use actual mapped names
         input_data = pd.DataFrame({
             'Year': [year],
             'Annual Rainfall': [rainfall],
             'Pesticide Use': [pesticides],
             'Avg Temperature': [avg_temp],
-            'Area': [area],
-            'Item': [item]
+            'Area': [actual_area],
+            'Item': [actual_item]
         })
         
         # Get feature names from model
@@ -52,12 +79,10 @@ def predict_crop_yield(year, rainfall, pesticides, avg_temp, area, item):
         # If model expects one-hot encoded features, apply get_dummies
         if feature_names is not None and any('_' in fname for fname in feature_names):
             # Model expects one-hot encoded input
-            dummy_columns = [col for col in feature_names if col not in ['Year', 'Annual Rainfall', 'Pesticide Use', 'Avg Temperature']]
+            # DON'T use drop_first=True here - it causes issues with single rows
+            input_encoded = pd.get_dummies(input_data, columns=['Area', 'Item'], drop_first=False)
             
-            # Get dummies for categorical columns
-            input_encoded = pd.get_dummies(input_data, columns=['Area', 'Item'], drop_first=True)
-            
-            # Reindex to match training features
+            # Reindex to match training features - fill missing with 0
             input_encoded = input_encoded.reindex(columns=feature_names, fill_value=0)
         else:
             # If model can handle raw data
@@ -97,7 +122,7 @@ def predict_crop_yield(year, rainfall, pesticides, avg_temp, area, item):
         confidence = base_confidence + sum(confidence_adjustments)
         confidence = max(0.5, min(1.0, confidence))  # Keep between 50% and 100%
         
-        # Create reasoning based on input features
+        # Create reasoning based on input features (using original names)
         rainfall_status = "adequate" if rainfall > 800 else "low" if rainfall < 500 else "moderate"
         pesticide_status = "high" if pesticides > 20000 else "low" if pesticides < 10000 else "moderate"
         
